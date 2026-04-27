@@ -1,5 +1,9 @@
-export function movingAverage(data: number[], windowSize: number): number[] {
-  let result: number[] = [];
+export function movingAverageAligned(
+  data: number[],
+  windowSize: number
+): (number | null)[] {
+  const result: (number | null)[] = Array(data.length).fill(null);
+  const offset = Math.floor(windowSize / 2);
 
   for (let i = 0; i <= data.length - windowSize; i++) {
     let sum = 0;
@@ -8,23 +12,32 @@ export function movingAverage(data: number[], windowSize: number): number[] {
       sum += data[i + j];
     }
 
-    result.push(sum / windowSize);
+    result[i + offset] = sum / windowSize;
   }
 
   return result;
 }
 
-export function leastSquares(data: number[]) {
-  const n = data.length;
-  const x = Array.from({ length: n }, (_, i) => i);
+// 🔥 Régression sur les moyennes mobiles uniquement
+export function leastSquaresFromMovingAverage(
+  movingAvg: (number | null)[]
+) {
+  const validPoints = movingAvg
+    .map((y, i) => (y !== null ? { x: i + 1, y } : null))
+    .filter((p): p is { x: number; y: number } => p !== null);
 
-  const sumX = x.reduce((a, b) => a + b, 0);
-  const sumY = data.reduce((a, b) => a + b, 0);
-  const sumXY = x.reduce((sum, xi, i) => sum + xi * data[i], 0);
-  const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+  const n = validPoints.length;
 
-  const a = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX ** 2);
-  const b = (sumY - a * sumX) / n;
+  const median = Math.floor((n + 1) / 2);
 
-  return { a, b };
+  const X = validPoints.map((p, i) => i + 1 - median);
+  const Y = validPoints.map((p) => p.y);
+
+  const sumXY = X.reduce((sum, xi, i) => sum + xi * Y[i], 0);
+  const sumX2 = X.reduce((sum, xi) => sum + xi * xi, 0);
+
+  const a = sumXY / sumX2;
+  const b = Y.reduce((a, b) => a + b, 0) / n;
+
+  return { a, b, median, validPoints, X };
 }
